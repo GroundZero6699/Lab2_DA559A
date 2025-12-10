@@ -1,0 +1,17 @@
+CREATE DATABASE taskManager;
+
+USE taskManager;
+
+CREATE TABLE User(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userName VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE TASKS(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100),
+    description VARCHAR(255),
+    status BOOLEAN,
+    userId VARCHAR(255) FOREIGN KEY REFERENCES User(id)
+);
