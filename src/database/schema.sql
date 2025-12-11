@@ -12,6 +12,6 @@ CREATE TABLE TASKS(
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(100),
     description VARCHAR(255),
-    status BOOLEAN,
-    userId VARCHAR(255) FOREIGN KEY REFERENCES User(id)
+    status VARCHAR(100),
+    userId INT FOREIGN KEY (userId) REFERENCES User(id)
 );
