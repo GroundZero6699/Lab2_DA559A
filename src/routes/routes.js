@@ -1,8 +1,33 @@
 import db from '../database/connect.js';
 import express from 'express';
-import { validInput, authorization } from '../validate/validationSchema.js';
+import { validInput, authorization } from '../util/validation.js';
 
 const route = express.Router();
+
+/**
+ * route to render a start page in html where user gets to choose
+ * to login or register.
+ */
+route.get('/', (req, res) => {
+    res.render('index');
+});
+
+/**
+ * route to render a login page where user
+ * can log in using username and password
+ * and get a jwt token back.
+ */
+route.get('/login', (req, res) => {
+    res.render('login');
+});
+
+/**
+ * route to render a register form will also return
+ * a jwt token to user.
+ */
+route.get('/register', (req, res) => {
+    res.render('register');
+});
 
 route.get('/tasks', async (req, res) => {
     const selectTasks = 'SELECT * FROM Tasks';
