@@ -21,6 +21,29 @@ route.get('/login', (req, res) => {
     res.render('login');
 });
 
+route.post('/login', async (req, res) => {
+    const { userName, password } = req.body;
+    const userQuery = `SELECT * FROM User WHERE userName = ?;`;
+    try{
+        
+        const [ user ] = await db.query(userQuery, userName);
+        if(!user){
+            res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        const checkPassword = await bcrypt.compare(password, user.password);
+        if(!checkPassword){
+            return res.status(401).json({ message: "Invalid credentials" });
+        };
+
+        const token = jwt.sign({ id: user.id, username: user.userName },
+            process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token });
+    }catch(err){
+        res.status(500).json({ message: "An error occured" });
+    }
+});
+
 /**
  * route to render a register form will also return
  * a jwt token to user.
@@ -28,6 +51,26 @@ route.get('/login', (req, res) => {
 route.get('/register', (req, res) => {
     res.render('register');
 });
+
+route.post('/register', async (req, res) => {
+    const inserting = `INSERT INTO User (userName, password)
+                       VALUES (?, ?);`;
+    try{
+        const { valid } = validInput(req.body);
+        if(valid){
+            return res.status(400).json({ message: "Invalid input format"});
+        }
+
+        const { userName, password } = req.body;
+        const hashed = await bcrypt.hash(password, 10);
+
+        await db.query(inserting, userName, hashed);
+
+        res.status(201).json({ message: "New user registerd" });
+    }catch(err){
+        res.status(500).json({ message: "Internal error"});
+    }
+})
 
 route.get('/addTask', (req, res) => {
     res.render('newTask');
@@ -104,7 +147,7 @@ route.delete('/tasks/:id', async (req, res) => {
         if(result.affectedRows === 0){
             res.status(404).json({ message: "No task with that id" });
         }
-        res.status(200).json({ success: true, message: "Deletion successfull" });
+        res.status(204).json({ success: true, message: "Deletion successfull" });
     }catch(err){
         res.status(500).json({ error: err.message });
     }

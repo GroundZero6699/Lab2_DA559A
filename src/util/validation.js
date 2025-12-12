@@ -2,9 +2,8 @@ import Joi from 'joi';
 
 export function validInput(body) {
   const validationSchema = Joi.object({
-    title: Joi.string().min(3).required(),
-    description: Joi.string().min(5).required(),
-    status: Joi.boolean().required(),
+    userName: Joi.string().required(),
+    password: Joi.string().min(6).required()
   });
 
   const { error, value } = validationSchema.validate(body);
