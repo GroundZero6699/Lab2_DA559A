@@ -1,0 +1,69 @@
+body{
+    background-color: rgb(21, 19, 20);
+    padding-left: 5%;
+    padding-top: 20%;
+    padding-bottom: 20%;
+    padding: 2% 10% 20% 10%;
+}
+#title{
+    color: whitesmoke;
+    background-color: rgb(21, 19, 20);
+    align-content: center;
+}
+#login{
+    align-content: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#register{
+    align-content: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+h1{
+    text-shadow: 2px 2px 0 crimson;
+    color: whitesmoke;
+    text-decoration: underline;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+div{
+    margin: auto;
+    width: 50%;
+    padding-top: 5%;
+}
+button{
+    padding: 12px 24px;
+    font-size: 20px;
+    font-weight: bold;
+    color: whitesmoke;
+    border: 5px solid transparent;
+    cursor: pointer;
+    background: linear-gradient(270deg, crimson, black, purple, pink);
+    background-size: 800% 800%;
+    animation: gradientMove 8s linear infinite;
+    transition: animation-direction 0.3s ease;
+    border-image: linear-gradient(270deg, black, crimson) 1;
+}
+button:hover{
+    animation-direction: reverse;
+    font-size: 25px;
+    font-weight: bolder;
+    color: whitesmoke;
+    -webkit-text-stroke: 1px rgb(255, 0, 0);
+}
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+form{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 200px;
+    justify-content: center;
+    align-items: center;
+}

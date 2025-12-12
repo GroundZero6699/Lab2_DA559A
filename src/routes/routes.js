@@ -1,6 +1,6 @@
 import db from '../database/connect.js';
 import express from 'express';
-import { validInput, authorization } from '../util/validation.js';
+//import { validInput, authorization } from '../util/validation.js';
 
 const route = express.Router();
 
@@ -29,8 +29,12 @@ route.get('/register', (req, res) => {
     res.render('register');
 });
 
+route.get('/addTask', (req, res) => {
+    res.render('newTask');
+})
+
 route.get('/tasks', async (req, res) => {
-    const selectTasks = 'SELECT * FROM Tasks';
+    const selectTasks = 'SELECT * FROM Tasks;';
     try{
         const [ result ] = await db.query(selectTasks);
         if(result.length === 0){
@@ -43,10 +47,10 @@ route.get('/tasks', async (req, res) => {
 });
 
 route.get('/tasks/:id', async (req, res) => {
-    const { taskId } = req.query.id;
-    const task = 'SELECT * FROM Tasks WHERE id = ?';
+    const taskId = req.params.id;
+    const task = 'SELECT * FROM Tasks WHERE id = ?;';
     try{
-        const { result } = await db.query(task, taskId);
+        const [ result ] = await db.query(task, taskId);
         if(result === 0){
             res.status(404).json('No task with that ID');
         }
@@ -56,13 +60,15 @@ route.get('/tasks/:id', async (req, res) => {
     }
 });
 
-/*route.post('/tasks', auth, async (req, res) => {
+route.post('/tasks', async (req, res) => {
+    const { title, description, status, userId } = req.body;
     try{
-        const valid = validInput(req.body);
-        
-        const newTask = `INSERT INTO Task (title, description, status, userId)
+        //const valid = validInput(req.body);
+        const newTask = `INSERT INTO Tasks (title, description, status, userId)
                      VALUES (?, ?, ?, ?);`;
-        await db.query(newTask, [valid.title, valid.description, valid.status, req.user.userId]);
+        await db.query(newTask,
+            [title, description, status, userId]);
+            //[valid.title, valid.description, valid.status, req.user.userId]);
         res.status(201).json({ 
             success: true, 
             message: 'New task successfull created' });
@@ -71,6 +77,37 @@ route.get('/tasks/:id', async (req, res) => {
             error: err.message,
             message: `Invalid request body, malformed or missing data` });
     }
-});*/
+});
+
+route.put('/tasks/:id', async (req, res) => {
+    const taskId = req.params.id;
+    const { status } = req.body;
+    const updateTask = `UPDATE Tasks SET status = ? WHERE id = ?;`;
+    try{
+        const [result] = await db.query(updateTask, [status, taskId]);
+        console.log(taskId, status, result);
+        if(result.affectedRows === 0){
+            res.status(404).json({ message: "Can't find a task by that id" });
+        }
+
+        res.status(200).json({ success: true, message: "Update successfull!" });
+    }catch(err){
+        res.status(500).json({ error: err.message });
+    }
+});
+
+route.delete('/tasks/:id', async (req, res) => {
+    const taskId = req.params.id;
+    const deleteQuery = `DELETE FROM Tasks WHERE id = ?;`
+    try{
+        const [ result ] = await db.query(deleteQuery, taskId);
+        if(result.affectedRows === 0){
+            res.status(404).json({ message: "No task with that id" });
+        }
+        res.status(200).json({ success: true, message: "Deletion successfull" });
+    }catch(err){
+        res.status(500).json({ error: err.message });
+    }
+});
 
 export default route;
