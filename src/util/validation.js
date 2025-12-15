@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import jwt from 'jsonwebtoken';
 
 export function validInput(body) {
   const validationSchema = Joi.object({
@@ -6,13 +7,7 @@ export function validInput(body) {
     password: Joi.string().min(6).required()
   });
 
-  const { error, value } = validationSchema.validate(body);
-
-  if(error){
-    throw new Error(error.details[0].message);
-  }
-
-  return value;
+  return validationSchema.validate(body);
 }
 
 export function authorization(req, res, next) {
