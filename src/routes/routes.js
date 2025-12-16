@@ -47,8 +47,8 @@ route.post('/login', async (req, res) => {
         };
 
         const token = jwt.sign({ id: user.id, username: user.userName },
-            process.env.JWT_SECRET, { expiresIn: '1h' });
-        return res.status(200).json({ token });
+            key, { expiresIn: '5m' });
+        res.status(200).json({ token });
     }catch(err){
         res.status(500).json({ message: "An error occured" });
     }
@@ -93,7 +93,7 @@ route.get('/tasks', async (req, res) => {
         if(result.length === 0){
             res.status(404).json('No tasks available');
         }
-        res.status(200).json(result);
+        res.status(200).json(...result);
     }catch(err){
         res.status(500).json('Internal error occured');
     }
@@ -107,7 +107,7 @@ route.get('/tasks/:id', async (req, res) => {
         if(result === 0){
             res.status(404).json('No task with that ID');
         }
-        res.status(200).json(result);
+        res.status(200).json(...result);
     }catch(err){
         res.status(500).json('Internal error occured');
     }
@@ -116,6 +116,9 @@ route.get('/tasks/:id', async (req, res) => {
 route.post('/tasks', authorization, async (req, res) => {
     const { title, description, status, userId } = req.body;
     try{
+        if(task.userId !== req.user.id){
+            return res.status(403).json({ message: "Not authorized for this action" });
+        }
         const newTask = `INSERT INTO Tasks (title, description, status, userId)
                      VALUES (?, ?, ?, ?);`;
         await db.query(newTask,
@@ -130,18 +133,50 @@ route.post('/tasks', authorization, async (req, res) => {
     }
 });
 
-route.put('/tasks/:id', async (req, res) => {
+route.put('/tasks/:id', authorization, async (req, res) => {
     const taskId = req.params.id;
-    const { status } = req.body;
-    const updateTask = `UPDATE Tasks SET status = ? WHERE id = ?;`;
+    const { title, description, status } = req.body;
+    const updateTask = `UPDATE Tasks SET
+                        title = ?,
+                        description = ?,
+                        status = ?
+                        WHERE id = ?;`;
     try{
-        const [result] = await db.query(updateTask, [status, taskId]);
-        console.log(taskId, status, result);
+        if(task.userId !== req.user.id){
+            return res.status(403).json({ message: "Not authorized for this action" });
+        }
+        const [result] = await db.query(updateTask, [title, description, status, taskId]);
+        if(result.affectedRows === 0){
+            return res.status(404).json({ message: "Task not found" });
+        }
+        res.status(200).json({ message: `Update successfull!` });
+    }catch(err){
+        res.status(500).json({ message: `Internal error!`});
+    }
+});
+
+route.patch('/tasks/:id', authorization, async (req, res) => {
+    const taskId = req.params.id;
+    let { title, description, status } = req.body;
+    const updateTask = `UPDATE Tasks SET 
+                        title = COALESCE(?, title),
+                        description = COALESCE(?, description),
+                        status = COALESCE(?, status)
+                        WHERE id = ?;`;
+    try{
+        if(task.userId !== req.user.id){
+            return res.status(403).json({ message: "Not authorized for this action" });
+        }
+        if(!title) title = null;
+        if(!description) description = null;
+        if(!status) status = null;
+
+        const [result] = await db.query(updateTask, [title, description, status, taskId]);
         if(result.affectedRows === 0){
             return res.status(404).json({ message: "Can't find a task by that id" });
         }
 
-        res.status(200).json({ success: true, message: "Update successfull!" });
+        res.status(200).json({ success: true, message: `Update successfull!` });
     }catch(err){
         res.status(500).json({ error: err.message });
     }

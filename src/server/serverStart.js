@@ -3,7 +3,7 @@
  * termination of server connection
  */
 
-import app from './middleware.js';
+import app from './app.js';
 import db from '../database/connect.js';
 
 const PORT = process.env.PORT || 3000;
