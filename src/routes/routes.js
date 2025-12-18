@@ -8,22 +8,37 @@ const route = express.Router();
 const key = process.env.JWT_SECRET;
 
 /**
- * route to render a start page in html where user gets to choose
- * to login or register.
+ * GET /
+ * Main entry point for unauthenticated users.
+ * Render index view with options login or register.
  */
 route.get('/', (req, res) => {
     res.render('index');
 });
 
 /**
- * route to render a login page where user
- * can log in using username and password
- * and get a jwt token back.
+ * GET /login
+ * Render login view for user to login and retrive a jwt token.
  */
 route.get('/login', (req, res) => {
     res.render('login');
 });
 
+/**
+ * POST /login
+ * This route checks user input and returns a jwt token if user credentials is valid
+ * and also uses a validation function that checks the format of the input.
+ * 
+ * @param {express.Request} req - Express request object
+ * @param {express.Response} res - Express response object
+ * @param {string} req.body.userName - Username
+ * @param {string} req.body.password - Users password
+ * 
+ * @return {200} - JSON Web Token
+ * @return {400} - JSON message if wrong format
+ * @return {401} - JSON message if password or username are invalid
+ * @return {500} - JSON message internal error
+ */
 route.post('/login', async (req, res) => {
     
     const userQuery = `SELECT * FROM User WHERE userName = ?;`;
@@ -55,13 +70,28 @@ route.post('/login', async (req, res) => {
 });
 
 /**
- * route to render a register form will also return
- * a jwt token to user.
+ * GET /register
+ * Renders the register view for non existing users
+ * to register and get a jwt token.
  */
 route.get('/register', (req, res) => {
     res.render('register');
 });
 
+/**
+ * POST /register
+ * insert a new user into the database with a hashed password if valid and creates 
+ * a jwt token for the new user.
+ * 
+ * @param {express.Request} req - Express request object
+ * @param {express.Response} res - Express response object
+ * @param {string} req.body.userName - Username
+ * @param {string} req.body.password - users password
+ * 
+ * @return {object} 404 - JSON error message invalid format
+ * @return {object} 201 - JSON success message
+ * @return {object} 500 - JSON error message Internal server error
+ */
 route.post('/register', async (req, res) => {
     const inserting = `INSERT INTO User (userName, password)
                        VALUES (?, ?);`;
@@ -82,14 +112,20 @@ route.post('/register', async (req, res) => {
     }
 });
 
-route.get('/addTask', (req, res) => {
-    res.render('newTask');
-});
-
+/**
+ * GET /tasks
+ * Retrives all tasks form database
+ * 
+ * @param {express.Response} res - Express reqsponse object
+ * 
+ * @return {object} 200 - JSON task objects
+ * @return {object} 404 - JSON error message if tasks can't be found
+ * @return {object} 500 - JSON error message internal server error 
+ */
 route.get('/tasks', async (req, res) => {
     const selectTasks = 'SELECT * FROM Tasks;';
     try{
-        const [ result ] = await db.query(selectTasks);
+        const [result] = await db.query(selectTasks);
         if(result.length === 0){
             res.status(404).json('No tasks available');
         }
@@ -99,12 +135,24 @@ route.get('/tasks', async (req, res) => {
     }
 });
 
+/**
+ * GET /tasks/:id
+ * Retrives a specific task by its id
+ * 
+ * @param {express.Request} req - Express request object
+ * @param {express.Response} res - Express response object
+ * @param {number} req.params.id - Task id
+ * 
+ * @return {object} 200 - JSON task object
+ * @return {object} 404 - JSON message if task not found
+ * @return {object} 500 - JSON message internal server error
+ */
 route.get('/tasks/:id', async (req, res) => {
     const taskId = req.params.id;
     const task = 'SELECT * FROM Tasks WHERE id = ?;';
     try{
-        const [ result ] = await db.query(task, taskId);
-        if(result === 0){
+        const [result] = await db.query(task, taskId);
+        if(result.length === 0){
             res.status(404).json('No task with that ID');
         }
         res.status(200).json(...result);
@@ -116,13 +164,11 @@ route.get('/tasks/:id', async (req, res) => {
 route.post('/tasks', authorization, async (req, res) => {
     const { title, description, status, userId } = req.body;
     try{
-        if(task.userId !== req.user.id){
-            return res.status(403).json({ message: "Not authorized for this action" });
-        }
         const newTask = `INSERT INTO Tasks (title, description, status, userId)
                      VALUES (?, ?, ?, ?);`;
         await db.query(newTask,
             [title, description, status, userId]);
+
         res.status(201).json({ 
             success: true, 
             message: 'New task successfull created' });
@@ -140,15 +186,19 @@ route.put('/tasks/:id', authorization, async (req, res) => {
                         title = ?,
                         description = ?,
                         status = ?
-                        WHERE id = ?;`;
+                        WHERE id = ?;`; 
     try{
-        if(task.userId !== req.user.id){
-            return res.status(403).json({ message: "Not authorized for this action" });
-        }
-        const [result] = await db.query(updateTask, [title, description, status, taskId]);
-        if(result.affectedRows === 0){
+        const checkTask = checkTasks(taskId, req.user.id, db);
+
+        if(checkTask === "404"){
             return res.status(404).json({ message: "Task not found" });
         }
+
+        if(checkTask === "403"){
+            return res.status(403).json({ message: "Not authorized for this action" });
+        }
+
+        const result = await db.query(updateTask, [title, description, status, taskId]);
         res.status(200).json({ message: `Update successfull!` });
     }catch(err){
         res.status(500).json({ message: `Internal error!`});
@@ -164,17 +214,21 @@ route.patch('/tasks/:id', authorization, async (req, res) => {
                         status = COALESCE(?, status)
                         WHERE id = ?;`;
     try{
-        if(task.userId !== req.user.id){
+        const checkTask = checkTasks(taskId, req.user.id, db);
+
+        if(checkTask === "404"){
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        if(checkTask === "403"){
             return res.status(403).json({ message: "Not authorized for this action" });
         }
+
         if(!title) title = null;
         if(!description) description = null;
         if(!status) status = null;
 
         const [result] = await db.query(updateTask, [title, description, status, taskId]);
-        if(result.affectedRows === 0){
-            return res.status(404).json({ message: "Can't find a task by that id" });
-        }
 
         res.status(200).json({ success: true, message: `Update successfull!` });
     }catch(err){
@@ -185,19 +239,37 @@ route.patch('/tasks/:id', authorization, async (req, res) => {
 route.delete('/tasks/:id', authorization, async (req, res) => {
     const taskId = req.params.id;
     const deleteQuery = `DELETE FROM Tasks WHERE id = ?;`;
-    const selectQuery = `SELECT * FROM Tasks WHERE id = ?`;
     try{
-        const [row] = await db.query(selectQuery, taskId);
-        const task = row[0];
+        const checkTask = checkTasks(taskId, req.user.id, db);
 
-        if(task.userId !== req.user.id){
+        if(checkTask === "404"){
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        if(checkTask === "403"){
             return res.status(403).json({ message: "Not authorized for this action" });
         }
+
         await db.query(deleteQuery, taskId);
         res.status(204).json({ success: true, message: "Deletion successfull" });
     }catch(err){
         res.status(500).json({ error: err.message });
     }
 });
+
+async function checkTasks(taskId, userId, db){
+    const [select] = await db.query(`SELECT * FROM Tasks WHERE id = ?;`, [taskId]);
+    const task = select[0];
+
+    if(!task){
+        return { error: "404" };
+    }
+
+    if(task.userId !== userId){
+        return { error: "403" };
+    }
+
+    return { task };
+}
 
 export default route;
