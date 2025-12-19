@@ -34,10 +34,10 @@ route.get('/login', (req, res) => {
  * @param {string} req.body.userName - Username
  * @param {string} req.body.password - Users password
  * 
- * @return {200} - JSON Web Token
- * @return {400} - JSON message if wrong format
- * @return {401} - JSON message if password or username are invalid
- * @return {500} - JSON message internal error
+ * @return {object} 200 - JSON Web Token
+ * @return {object} 400 - JSON message if wrong format
+ * @return {object} 401 - JSON message if password or username are invalid
+ * @return {object} 500 - JSON message internal error
  */
 route.post('/login', async (req, res) => {
     
@@ -160,7 +160,22 @@ route.get('/tasks/:id', async (req, res) => {
         res.status(500).json('Internal error occured');
     }
 });
-
+ /**
+  * POST /tasks
+  * creates a new task and inserts it to database
+  * 
+  * @middleware authorization - Ensures user is authorized for the request
+  * 
+  * @param {express.Request} req - Express request object
+  * @param {express.Response} res - Express response object
+  * @param {string} req.body.title - Title of task
+  * @param {string} req.body.description - Description of task
+  * @param {string} req.body.status - Task status
+  * @param {number} req.body.userId - Id of user related to task
+  * 
+  * @return {object} 201 - Task successfully created
+  * @return {object} 400 - Error message malformed or missing data
+  */
 route.post('/tasks', authorization, async (req, res) => {
     const { title, description, status, userId } = req.body;
     try{
@@ -179,6 +194,24 @@ route.post('/tasks', authorization, async (req, res) => {
     }
 });
 
+/**
+ * PUT /tasks/:id
+ * Makes updates to a task by using it id
+ * 
+ * @middleware authorization - Ensures user is authorized for request
+ * 
+ * @param {express.Request} req - Express request object
+ * @param {express.Response} res - Express response object
+ * @param {number} req.params.taskid - Id of task
+ * @param {string} req.body.title - Title of task
+ * @param {string} req.body.description - Description of task
+ * @param {string} req.body.status - Status of task
+ * 
+ * @return {object} 404 - Error message not found
+ * @return {object} 403 - Error message not authorized
+ * @return {object} 200 - Update successfull
+ * @return {object} 500 - Error message internal error
+ */
 route.put('/tasks/:id', authorization, async (req, res) => {
     const taskId = req.params.id;
     const { title, description, status } = req.body;
@@ -205,6 +238,27 @@ route.put('/tasks/:id', authorization, async (req, res) => {
     }
 });
 
+/**
+ * PATCH /tasks/:id
+ * Updates all or individual columns in database depending
+ * on request body.
+ * Using COALESCE() to preserve values that are not passed
+ * in request body.
+ * 
+ * @middleware authorization - Ensures user is authorized for request
+ * 
+ * @param {express.Request} req - Express request object
+ * @param {express.Response} res - Express response object
+ * @param {number} req.params.taskId - Id of task
+ * @param {string} req.body.title - Title of task
+ * @param {string} req.body.description - Description of task
+ * @param {string} req.body.status - Status of task
+ * 
+ * @return {object} 404 - Error message not found
+ * @return {object} 403 - Error message not authorized
+ * @return {object} 200 - Update successfull message
+ * @return {object} 500 - Error message internal error
+ */
 route.patch('/tasks/:id', authorization, async (req, res) => {
     const taskId = req.params.id;
     let { title, description, status } = req.body;
@@ -236,6 +290,21 @@ route.patch('/tasks/:id', authorization, async (req, res) => {
     }
 });
 
+/**
+ * DELETE /tasks/:id
+ * Deletes a task using its id.
+ * 
+ * @middleware authorization - Ensures user is authorized for request
+ * 
+ * @param {express.Request} req - Express request object
+ * @param {express.Response} res - Express response object
+ * @param {number} req.params.taskId - Id of task
+ * 
+ * @return {object} 404 - Error message not found
+ * @return {object} 403 - Error message not authorized
+ * @return {object} 204 - Deletion successfull message
+ * @return {object} 500 - Error message internal error
+ */
 route.delete('/tasks/:id', authorization, async (req, res) => {
     const taskId = req.params.id;
     const deleteQuery = `DELETE FROM Tasks WHERE id = ?;`;
@@ -257,6 +326,17 @@ route.delete('/tasks/:id', authorization, async (req, res) => {
     }
 });
 
+/**
+ * Helper method to retrieve a task and verify user ownership.
+ * 
+ * @param {number} taskId - Id of task
+ * @param {number} userId - Id of user
+ * @param {mysql.Connection} db - Active mySQL Database connection
+ * 
+ * @returns {object} 404 - Error code when task can't be found
+ * @returns {object} 403 - Error code when user dont have ownership of task
+ * @returns {object} task - A task object if found and user have ownership
+ */
 async function checkTasks(taskId, userId, db){
     const [select] = await db.query(`SELECT * FROM Tasks WHERE id = ?;`, [taskId]);
     const task = select[0];
