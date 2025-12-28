@@ -321,7 +321,7 @@ route.delete('/tasks/:id', authorization, async (req, res) => {
             return res.status(403).json({ message: "Not authorized for this action" });
         }
 
-        await db.query(deleteQuery, taskId, userId);
+        await db.query(deleteQuery, [taskId, userId]);
         res.status(204).json({ success: true, message: "Deletion successfull" });
     }catch(err){
         res.status(500).json({ error: err.message });
