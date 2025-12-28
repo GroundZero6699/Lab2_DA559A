@@ -123,13 +123,13 @@ route.post('/register', async (req, res) => {
  * @return {object} 500 - JSON error message internal server error 
  */
 route.get('/tasks', async (req, res) => {
-    const selectTasks = 'SELECT * FROM Tasks;';
+    const selectTasks = 'SELECT * FROM Tasks ORDER BY userId;';
     try{
         const [result] = await db.query(selectTasks);
         if(result.length === 0){
             res.status(404).json('No tasks available');
         }
-        res.status(200).json(...result);
+        res.status(200).json(result);
     }catch(err){
         res.status(500).json('Internal error occured');
     }
@@ -160,6 +160,7 @@ route.get('/tasks/:id', async (req, res) => {
         res.status(500).json('Internal error occured');
     }
 });
+
  /**
   * POST /tasks
   * creates a new task and inserts it to database
@@ -231,7 +232,7 @@ route.put('/tasks/:id', authorization, async (req, res) => {
             return res.status(403).json({ message: "Not authorized for this action" });
         }
 
-        const result = await db.query(updateTask, [title, description, status, taskId]);
+        await db.query(updateTask, [title, description, status, taskId]);
         res.status(200).json({ message: `Update successfull!` });
     }catch(err){
         res.status(500).json({ message: `Internal error!`});
@@ -282,7 +283,7 @@ route.patch('/tasks/:id', authorization, async (req, res) => {
         if(!description) description = null;
         if(!status) status = null;
 
-        const [result] = await db.query(updateTask, [title, description, status, taskId]);
+        await db.query(updateTask, [title, description, status, taskId]);
 
         res.status(200).json({ success: true, message: `Update successfull!` });
     }catch(err){
@@ -307,19 +308,20 @@ route.patch('/tasks/:id', authorization, async (req, res) => {
  */
 route.delete('/tasks/:id', authorization, async (req, res) => {
     const taskId = req.params.id;
-    const deleteQuery = `DELETE FROM Tasks WHERE id = ?;`;
+    const userId = req.user.id;
+    const deleteQuery = `DELETE FROM Tasks WHERE id = ? AND userId = ?;`;
     try{
-        const checkTask = checkTasks(taskId, req.user.id, db);
+        const checkTask = await checkTasks(taskId, userId, db);
 
-        if(checkTask === "404"){
+        if(checkTask.error === "404"){
             return res.status(404).json({ message: "Task not found" });
         }
 
-        if(checkTask === "403"){
+        if(checkTask.error === "403"){
             return res.status(403).json({ message: "Not authorized for this action" });
         }
 
-        await db.query(deleteQuery, taskId);
+        await db.query(deleteQuery, taskId, userId);
         res.status(204).json({ success: true, message: "Deletion successfull" });
     }catch(err){
         res.status(500).json({ error: err.message });

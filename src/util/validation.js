@@ -31,7 +31,7 @@ export function validInput(body) {
 export function authorization(req, res, next) {
     const auth = req.headers['authorization'];
     if(!auth){
-        return res.status(401).json({ error: 'Error creating Token' });
+        return res.status(401).json({ error: 'Not authorized!' });
     }
 
     const generatedToken = auth.split(' ')[1];
