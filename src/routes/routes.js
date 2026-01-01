@@ -178,12 +178,13 @@ route.get('/tasks/:id', async (req, res) => {
   * @return {object} 400 - Error message malformed or missing data
   */
 route.post('/tasks', authorization, async (req, res) => {
-    const { title, description, status, userId } = req.body;
+    const { title, description, status } = req.body;
+    const user = req.user.id;
     try{
         const newTask = `INSERT INTO Tasks (title, description, status, userId)
                      VALUES (?, ?, ?, ?);`;
         await db.query(newTask,
-            [title, description, status, userId]);
+            [title, description, status, user]);
 
         res.status(201).json({ 
             success: true, 
@@ -222,13 +223,13 @@ route.put('/tasks/:id', authorization, async (req, res) => {
                         status = ?
                         WHERE id = ?;`; 
     try{
-        const checkTask = checkTasks(taskId, req.user.id, db);
+        const checkTask = await checkTasks(taskId, req.user.id, db);
 
-        if(checkTask === "404"){
+        if(checkTask.error === "404"){
             return res.status(404).json({ message: "Task not found" });
         }
 
-        if(checkTask === "403"){
+        if(checkTask.error === "403"){
             return res.status(403).json({ message: "Not authorized for this action" });
         }
 
@@ -269,13 +270,13 @@ route.patch('/tasks/:id', authorization, async (req, res) => {
                         status = COALESCE(?, status)
                         WHERE id = ?;`;
     try{
-        const checkTask = checkTasks(taskId, req.user.id, db);
+        const checkTask = await checkTasks(taskId, req.user.id, db);
 
-        if(checkTask === "404"){
+        if(checkTask.error === "404"){
             return res.status(404).json({ message: "Task not found" });
         }
 
-        if(checkTask === "403"){
+        if(checkTask.error === "403"){
             return res.status(403).json({ message: "Not authorized for this action" });
         }
 
