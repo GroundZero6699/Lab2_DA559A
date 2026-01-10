@@ -21,7 +21,6 @@ export function validInput(body) {
 
 /**
  * Middleware to validate JWT tokens.
- * With specified hashing algorithm to avoid header spoofing.
  * 
  * @param {Express.Request} req - Express request object
  * @param {Express.Response} res - Express response object
@@ -37,7 +36,7 @@ export function authorization(req, res, next) {
 
     const generatedToken = auth.split(' ')[1];
     try{
-        const decode = jwt.verify(generatedToken, process.env.JWT_SECRET, { algorithms: ['RS256'] });
+        const decode = jwt.verify(generatedToken, process.env.JWT_SECRET);
         req.user = decode;
         next();
     }catch(err){
